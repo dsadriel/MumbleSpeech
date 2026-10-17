@@ -5,6 +5,16 @@ import AVFoundation
 /// Handles async text pacing, syllable vowel synthesis, zero-allocation vowel caching,
 /// and lifecycle/viseme event emission.
 public final class MumbleSpeaker: @unchecked Sendable {
+    /// Shared singleton instance for centralized, app-wide or game-wide dialogue management.
+    public static let shared = MumbleSpeaker()
+
+    /// Types of sound effects that can be registered for inline dialogue tags like "{tag}".
+    public enum SoundEffect: @unchecked Sendable {
+        case buffer(AVAudioPCMBuffer)
+        case file(URL)
+        case action(@Sendable () -> Void)
+    }
+
     public var profile: VoiceProfile {
         didSet {
             prewarmVowelCache()
@@ -27,10 +37,92 @@ public final class MumbleSpeaker: @unchecked Sendable {
     private var vowelCache: [Vowel: AVAudioPCMBuffer] = [:]
     private let cacheLock = NSLock()
 
-    public init(profile: VoiceProfile = .youngWoman, typingSpeedMultiplier: Double = 1.0) {
+    // Instance-specific sound effects that can override or supplement global ones
+    private var localSoundEffects: [String: SoundEffect] = [:]
+    private let soundEffectsLock = NSLock()
+
+    /// Creates a MumbleSpeaker with optional voice profile, speed, and sound effect dictionary.
+    public init(
+        profile: VoiceProfile = .youngWoman,
+        typingSpeedMultiplier: Double = 1.0,
+        soundEffects: [String: SoundEffect] = [:]
+    ) {
         self.profile = profile
         self.typingSpeedMultiplier = typingSpeedMultiplier
+        self.localSoundEffects = soundEffects
         prewarmVowelCache()
+    }
+
+    // MARK: - Static (Global) Sound Effect Registration
+
+    /// Registers a global sound effect using the `SoundEffect` enum (.file, .buffer, or .action).
+    /// Affects all speakers and NPC instances across the app/game.
+    public static func registerSoundEffect(named name: String, effect: SoundEffect) {
+        switch effect {
+        case .buffer(let buffer):
+            registerSoundEffect(named: name, buffer: buffer)
+        case .file(let url):
+            registerSoundEffect(named: name, url: url)
+        case .action(let action):
+            registerSoundEffect(named: name, action: action)
+        }
+    }
+
+    /// Registers a global in-memory PCM buffer for inline dialogue tags like "{snort}".
+    public static func registerSoundEffect(named name: String, buffer: AVAudioPCMBuffer) {
+        MumbleSpeechEngine.shared.registerSoundEffect(named: name, buffer: buffer)
+    }
+
+    /// Registers a global audio file URL (.wav, .mp3, etc.) for inline dialogue tags like "{chime}".
+    public static func registerSoundEffect(named name: String, url: URL) {
+        MumbleSpeechEngine.shared.registerSoundEffect(named: name, url: url)
+    }
+
+    /// Registers a global callback closure for inline tags like "{shake_screen}" or custom game audio.
+    public static func registerSoundEffect(named name: String, action: @Sendable @escaping () -> Void) {
+        MumbleSpeechEngine.shared.registerSoundEffect(named: name, action: action)
+    }
+
+    // MARK: - Instance-Specific Sound Effect Registration
+
+    /// Registers an instance-specific sound effect that applies only to this speaker instance.
+    public func registerSoundEffect(named name: String, effect: SoundEffect) {
+        soundEffectsLock.lock()
+        defer { soundEffectsLock.unlock() }
+        localSoundEffects[name.lowercased()] = effect
+    }
+
+    /// Registers an instance-specific in-memory PCM buffer.
+    public func registerSoundEffect(named name: String, buffer: AVAudioPCMBuffer) {
+        registerSoundEffect(named: name, effect: .buffer(buffer))
+    }
+
+    /// Registers an instance-specific audio file URL.
+    public func registerSoundEffect(named name: String, url: URL) {
+        registerSoundEffect(named: name, effect: .file(url))
+    }
+
+    /// Registers an instance-specific callback closure.
+    public func registerSoundEffect(named name: String, action: @Sendable @escaping () -> Void) {
+        registerSoundEffect(named: name, effect: .action(action))
+    }
+
+    /// Centralized configuration helper for `MumbleSpeaker.shared`.
+    /// Call once at game/app launch to set global sound effects and default voice.
+    public static func configure(
+        profile: VoiceProfile? = nil,
+        typingSpeedMultiplier: Double? = nil,
+        soundEffects: [String: SoundEffect] = [:]
+    ) {
+        if let profile = profile {
+            shared.profile = profile
+        }
+        if let speed = typingSpeedMultiplier {
+            shared.typingSpeedMultiplier = speed
+        }
+        for (name, effect) in soundEffects {
+            registerSoundEffect(named: name, effect: effect)
+        }
     }
 
     /// Pre-renders the 6 standard phonetic vowels into memory (~50 KB)
@@ -51,23 +143,6 @@ public final class MumbleSpeaker: @unchecked Sendable {
                 vowelCache[vowel] = buffer
             }
         }
-    }
-
-    // MARK: - Sound Effect Registration
-
-    /// Registers a custom in-memory PCM buffer for inline dialogue tags like "{snort}".
-    public func registerSoundEffect(named name: String, buffer: AVAudioPCMBuffer) {
-        MumbleSpeechEngine.shared.registerSoundEffect(named: name, buffer: buffer)
-    }
-
-    /// Registers an audio file URL (.wav, .mp3, etc.) for inline dialogue tags like "{chime}".
-    public func registerSoundEffect(named name: String, url: URL) {
-        MumbleSpeechEngine.shared.registerSoundEffect(named: name, url: url)
-    }
-
-    /// Registers a custom callback closure for inline tags like "{shake_screen}" or custom game audio.
-    public func registerSoundEffect(named name: String, action: @Sendable @escaping () -> Void) {
-        MumbleSpeechEngine.shared.registerSoundEffect(named: name, action: action)
     }
 
     /// Speaks dialogue asynchronously, emitting viseme and character events as text types out.
@@ -94,7 +169,7 @@ public final class MumbleSpeaker: @unchecked Sendable {
 
                 switch step {
                 case .soundEffect(let tag):
-                    MumbleSpeechEngine.shared.playSoundEffect(named: tag)
+                    self.playSoundEffect(named: tag)
                     await self.emitEvent(.tag(tag))
 
                 case .character(let char, let delay, let isVowelStart, let cluster):
@@ -146,6 +221,27 @@ public final class MumbleSpeaker: @unchecked Sendable {
 
         activeSpeechTask = task
         return await task.value
+    }
+
+    /// Plays a sound effect, checking instance-specific registrations first, then falling back to global engine registrations.
+    private func playSoundEffect(named tag: String) {
+        soundEffectsLock.lock()
+        let local = localSoundEffects[tag.lowercased()]
+        soundEffectsLock.unlock()
+
+        if let local = local {
+            switch local {
+            case .buffer(let buffer):
+                MumbleSpeechEngine.shared.playVowel(buffer: buffer)
+            case .file(let url):
+                MumbleSpeechEngine.shared.playAudioFile(url: url)
+            case .action(let action):
+                action()
+            }
+        } else {
+            // Fallback to globally registered sound effect
+            MumbleSpeechEngine.shared.playSoundEffect(named: tag)
+        }
     }
 
     /// Immediately finishes typing, reveals all text, and silences speech sound.

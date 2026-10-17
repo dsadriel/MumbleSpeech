@@ -123,7 +123,7 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
         }
     }
 
-    private func playAudioFile(url: URL) {
+    func playAudioFile(url: URL) {
         do {
             let audioFile = try AVAudioFile(forReading: url)
             lock.lock()

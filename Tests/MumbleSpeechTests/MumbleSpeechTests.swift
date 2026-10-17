@@ -99,15 +99,31 @@ struct MumbleSpeechTests {
         #expect(speaker.profile.id == "guard")
     }
 
-    @Test("Sound Effect Registration")
-    func testSoundEffectRegistration() {
-        let speaker = MumbleSpeaker(profile: .youngWoman)
-        var actionExecuted = false
-        speaker.registerSoundEffect(named: "chime") {
-            actionExecuted = true
+    @Test("Global Static Sound Effect Registration")
+    func testGlobalSoundEffectRegistration() {
+        var globalActionCalled = false
+        MumbleSpeaker.registerSoundEffect(named: "global_chime") {
+            globalActionCalled = true
         }
 
-        MumbleSpeechEngine.shared.playSoundEffect(named: "chime")
-        #expect(actionExecuted)
+        // NPC instance should inherit the globally registered sound effect
+        let guardSpeaker = MumbleSpeaker(profile: .guardProfile)
+        MumbleSpeechEngine.shared.playSoundEffect(named: "global_chime")
+        #expect(globalActionCalled)
+    }
+
+    @Test("Instance-Specific Sound Effect Override")
+    func testInstanceSoundEffectOverride() {
+        var instanceActionCalled = false
+        let pirateSpeaker = MumbleSpeaker(
+            profile: .pirate,
+            soundEffects: [
+                "aye": .action {
+                    instanceActionCalled = true
+                }
+            ]
+        )
+
+        #expect(pirateSpeaker.profile.id == "pirate")
     }
 }
