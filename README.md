@@ -9,6 +9,7 @@ Based on acoustic speech research and procedural formant synthesis:
 - **Syllable-Based Pacing**: Detects vowel groups so speech cadence drops from robotic 30 beeps/sec to a natural chatty pace of ~10 vowel bursts/sec.
 - **Punctuation Prosody**: Natural phrase declination drift, resets at commas, rising inflection on `?`, shouting on `ALL CAPS` and `!`, and volume fade on `...`.
 - **Game-Ready Viseme Events**: Exposes callbacks and async streams for character portraits, mouth animation, and camera/screen shake tags.
+- **Generic Effect System**: Register audio files (.mp3, .wav), PCM buffers, or custom game closures (camera shake, haptics, UI animations) triggered directly from inline dialogue tags like `{meow}` or `{witch_laugh}`.
 
 ---
 
@@ -18,55 +19,103 @@ Add `MumbleSpeech` to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-username/Voice.git", from: "1.0.0")
+    .package(url: "https://github.com/your-username/MumbleSpeech.git", from: "1.0.0")
 ]
 ```
 
-Or in Xcode: **File** > **Add Package Dependencies...** and point to this repository or local folder.
+Or in Xcode: **File** > **Add Package Dependencies...** and point to the `MumbleSpeech` package folder or Git repository.
 
 ---
 
-## Quick Start in Games
+## Quick Start Guide
+
+### 1. Register Global Effects (Audio Files, Buffers, or Actions)
+Register your app-wide or game-wide effects once at application startup. Any NPC or speaker instance automatically inherits these effects:
 
 ```swift
 import MumbleSpeech
 
-// 1. Create a speaker with a character voice profile
-let speaker = MumbleSpeaker(profile: .youngWoman)
+// A. Register an audio file (.mp3, .wav, .caf, .aif) bundled in your app:
+if let meowURL = Bundle.main.url(forResource: "cat_meow", withExtension: "mp3") {
+    MumbleSpeaker.registerEffect(named: "meow", url: meowURL)
+}
 
-// 2. Listen to visemes and game event tags for animation
-speaker.onEvent = { event in
+if let laughURL = Bundle.main.url(forResource: "witch_laugh", withExtension: "mp3") {
+    MumbleSpeaker.registerEffect(named: "witch_laugh", url: laughURL)
+}
+
+// B. Register a game action (camera shake, screen flash, haptics, particle burst):
+MumbleSpeaker.registerEffect(named: "shake") {
+    CameraRig.current.shake(intensity: 0.8)
+}
+
+// C. Or configure default voice and effects together centrally:
+MumbleSpeaker.configure(
+    profile: .youngWoman,
+    typingSpeedMultiplier: 1.0,
+    effects: [
+        "chime": .file(chimeURL),
+        "flash": .action { ScreenFlash.trigger() }
+    ]
+)
+```
+
+---
+
+### 2. Speaking with Characters & NPCs
+
+Create dedicated `MumbleSpeaker` instances for your NPCs. Each NPC has its own voice profile and automatically inherits all global effects:
+
+```swift
+// Create an NPC speaker instance
+let witch = MumbleSpeaker(profile: .witch)
+
+// Optionally override or add NPC-specific local effects:
+let pirate = MumbleSpeaker(
+    profile: .pirate,
+    effects: [
+        "aye": .action { playPirateLaugh() }
+    ]
+)
+```
+
+---
+
+### 3. Playing Dialogue with Inline Tags
+
+Embed `{effect_name}` anywhere in the dialogue text. The engine will seamlessly trigger the audio or action at the exact moment that word/tag is reached during the typewriter sequence, without rendering the `{...}` tag in the user's visible text:
+
+```swift
+// Listen for typewriter updates and mouth animation (visemes)
+witch.onEvent = { event in
     switch event {
     case .character(let char, let currentText):
         dialogueLabel.text = currentText
 
     case .vowel(let vowel, let openness, let pitch):
-        // Drive 2D or 3D character mouth shape
-        characterMouth.setOpenness(openness)
+        // Animate 2D/3D mouth
+        characterAvatar.setMouthOpenness(openness)
 
     case .tag(let tag):
-        // Trigger game events directly inside dialogue!
-        if tag == "camera_shake" {
-            camera.shake(intensity: 0.5)
-        } else if tag == "purr" {
-            playPetAnimation()
-        }
+        // You can also inspect raw inline tags if needed
+        print("Encountered dialogue tag: {\(tag)}")
 
     case .completed(let fullText):
-        advancePromptArrow.show()
+        continueButton.isHidden = false
 
     case .interrupted:
         break
     }
 }
 
-// 3. Speak dialogue asynchronously
+// Speak asynchronously:
 Task {
-    await speaker.speak("Sister Agnes told me to watch the gates! {camera_shake} Be careful.")
+    // Plays witch voice, triggers witch_laugh.mp3, and resumes witch speech!
+    await witch.speak("Hehehe! {witch_laugh} You dare enter my forest? Begone!")
 }
 
-// 4. Instant skip (e.g. on player tap or spacebar press)
-speaker.skip()
+// Instant skip (e.g. on player click / spacebar):
+witch.skip()
 ```
 
 ---
@@ -74,11 +123,12 @@ speaker.skip()
 ## Character Voice Presets
 
 `VoiceProfile` provides ready-to-use character archetypes:
-- `VoiceProfile.guardProfile`: Deep, steady pitch (92 Hz), long vocal tract ($0.88\times$).
 - `VoiceProfile.youngWoman`: High, bright pitch (225 Hz), shorter tract ($1.25\times$).
+- `VoiceProfile.guardProfile`: Deep, authoritative pitch (92 Hz), long vocal tract ($0.88\times$).
 - `VoiceProfile.child`: Energetic pitch (320 Hz), extra-short vocal tract ($1.48\times$).
-- `VoiceProfile.elder`: Ancient voice with a 2 Hz unsteady tremor/vibrato.
+- `VoiceProfile.elder`: Ancient voice with a slow 2 Hz unsteady tremor/vibrato.
 - `VoiceProfile.pirate`: Raspy breath, narrow mouth tract, low-mid pitch.
+- `VoiceProfile.witch`: Cackling, high raspy pitch (260 Hz), fast 3.5 Hz vibrato.
 
 ### Custom Voice Creation (1 Line)
 
@@ -97,55 +147,6 @@ let customVoice = VoiceProfile(
 ```
 
 ---
-
----
-
-## Effects & Tags (`{tag}`)
-
-You can embed inline cue tags directly in your dialogue strings, such as `"{camera_shake}"`, `"{coin}"`, or `"{purr}"`.
-
-Effects can be registered **statically (globally)** for all speakers across your game, or **per-instance** for specific NPCs.
-
-### 1. Global Static Configuration (Recommended)
-Register effects once at app/game startup. Any speaker or NPC will automatically inherit and trigger them:
-
-```swift
-// Register an audio file (.wav, .mp3, etc.)
-MumbleSpeaker.registerEffect(named: "chime", url: chimeURL)
-
-// Register custom game logic (camera shake, haptics, UI animations)
-MumbleSpeaker.registerEffect(named: "shake") {
-    CameraRig.current.shake(intensity: 0.8)
-}
-
-// Or configure default settings centrally
-MumbleSpeaker.configure(
-    profile: .youngWoman,
-    effects: [
-        "coin": .file(coinSoundURL),
-        "flash": .action { ScreenFlash.trigger() }
-    ]
-)
-```
-
-### 2. NPC-Specific Instances with Local Overrides
-You can create specific NPC speaker instances with their own voice profiles and custom effect overrides:
-
-```swift
-// NPC instance inherits all global effects, plus local overrides
-let pirate = MumbleSpeaker(
-    profile: .pirate,
-    effects: [
-        "aye": .action { playPirateLaugh() }
-    ]
-)
-
-// In dialogue, "{shake}" resolves to the global handler,
-// while "{aye}" triggers this pirate's specific action:
-Task {
-    await pirate.speak("Ahoy! {aye} The storm approaches! {shake}")
-}
-```
 
 ## Supported Platforms
 - macOS 13+

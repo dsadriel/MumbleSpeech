@@ -134,12 +134,28 @@ public extension VoiceProfile {
         vowelDuration: 0.095
     )
 
+/// Cackling witch with high raspy pitch, fast vibrato, and shorter vocal tract.
+    static let witch = VoiceProfile(
+        id: "witch",
+        name: "Morgana",
+        roleDescription: "Forest Witch",
+        icon: "flame.fill",
+        basePitch: 260.0,
+        tractLengthScale: 1.15,
+        breathiness: 0.16,
+        vibratoDepth: 0.040,
+        vibratoRate: 3.5,
+        jitter: 0.022,
+        vowelDuration: 0.090
+    )
+
     /// Default collection of all built-in characters.
     static let allPresets: [VoiceProfile] = [
         .guardProfile,
         .youngWoman,
         .child,
         .elder,
-        .pirate
+        .pirate,
+        .witch
     ]
 }
