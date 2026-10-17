@@ -5,11 +5,13 @@ import AVFoundation
 public final class MumbleSpeechEngine: @unchecked Sendable {
     public static let shared = MumbleSpeechEngine()
 
-    public enum SoundEffectSource: @unchecked Sendable {
+    public enum EffectSource: @unchecked Sendable {
         case buffer(AVAudioPCMBuffer)
         case file(URL)
         case custom(@Sendable () -> Void)
     }
+
+    public typealias SoundEffectSource = EffectSource
 
     private let audioEngine = AVAudioEngine()
     private let mixerNode = AVAudioMixerNode()
@@ -19,7 +21,7 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
     private var playerNodes: [AVAudioPlayerNode] = []
     private var nextPlayerIndex = 0
 
-    private var soundEffects: [String: SoundEffectSource] = [:]
+    private var effects: [String: EffectSource] = [:]
 
     private let lock = NSRecursiveLock()
     private var isEngineRunning = false
@@ -62,25 +64,38 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
         }
     }
 
-    /// Registers a sound effect using an in-memory PCM buffer.
+    // MARK: - Effect Registration
+
+    /// Registers an effect using an in-memory PCM buffer.
+    public func registerEffect(named name: String, buffer: AVAudioPCMBuffer) {
+        lock.lock()
+        defer { lock.unlock() }
+        effects[name.lowercased()] = .buffer(buffer)
+    }
+
+    /// Registers an effect from an audio file URL (.wav, .mp3, .caf, .aif).
+    public func registerEffect(named name: String, url: URL) {
+        lock.lock()
+        defer { lock.unlock() }
+        effects[name.lowercased()] = .file(url)
+    }
+
+    /// Registers a custom closure or callback for an effect tag (audio, animation, haptics, game logic).
+    public func registerEffect(named name: String, action: @Sendable @escaping () -> Void) {
+        lock.lock()
+        defer { lock.unlock() }
+        effects[name.lowercased()] = .custom(action)
+    }
+
+    // Backwards compatibility aliases
     public func registerSoundEffect(named name: String, buffer: AVAudioPCMBuffer) {
-        lock.lock()
-        defer { lock.unlock() }
-        soundEffects[name.lowercased()] = .buffer(buffer)
+        registerEffect(named: name, buffer: buffer)
     }
-
-    /// Registers a sound effect from an audio file URL (.wav, .mp3, .caf, .aif).
     public func registerSoundEffect(named name: String, url: URL) {
-        lock.lock()
-        defer { lock.unlock() }
-        soundEffects[name.lowercased()] = .file(url)
+        registerEffect(named: name, url: url)
     }
-
-    /// Registers a custom closure or playback callback for a sound effect tag.
     public func registerSoundEffect(named name: String, action: @Sendable @escaping () -> Void) {
-        lock.lock()
-        defer { lock.unlock() }
-        soundEffects[name.lowercased()] = .custom(action)
+        registerEffect(named: name, action: action)
     }
 
     /// Plays a synthesized vowel sound buffer with smooth overlap.
@@ -102,10 +117,10 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
         }
     }
 
-    /// Plays a registered sound effect or built-in procedural fallback.
-    public func playSoundEffect(named sfx: String) {
+    /// Triggers a registered effect or built-in procedural fallback.
+    public func triggerEffect(named effectName: String) {
         lock.lock()
-        let effect = soundEffects[sfx.lowercased()]
+        let effect = effects[effectName.lowercased()]
         lock.unlock()
 
         if let effect = effect {
@@ -117,10 +132,14 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
             case .custom(let action):
                 action()
             }
-        } else if sfx.lowercased() == "purr" {
+        } else if effectName.lowercased() == "purr" {
             // Built-in procedural cat purr fallback
             synthesizeAndPlayPurr()
         }
+    }
+
+    public func playSoundEffect(named sfx: String) {
+        triggerEffect(named: sfx)
     }
 
     func playAudioFile(url: URL) {
@@ -140,7 +159,7 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
                 player.play()
             }
         } catch {
-            print("Failed to load sound effect at \(url): \(error)")
+            print("Failed to load audio file at \(url): \(error)")
         }
     }
 

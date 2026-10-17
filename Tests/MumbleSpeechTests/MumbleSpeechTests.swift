@@ -2,6 +2,10 @@ import Testing
 import AVFoundation
 @testable import MumbleSpeech
 
+final class ActionBox: @unchecked Sendable {
+    var called = false
+}
+
 @Suite("MumbleSpeech Engine Tests")
 struct MumbleSpeechTests {
     @Test("Vowel Phonetic Mapping")
@@ -21,7 +25,7 @@ struct MumbleSpeechTests {
         let steps = pacer.parse(text: "Sister Agnes told me! {purr}")
 
         let hasPurr = steps.contains { step in
-            if case .soundEffect(let sfx) = step, sfx == "purr" { return true }
+            if case .effect(let sfx) = step, sfx == "purr" { return true }
             return false
         }
         #expect(hasPurr)
@@ -99,27 +103,27 @@ struct MumbleSpeechTests {
         #expect(speaker.profile.id == "guard")
     }
 
-    @Test("Global Static Sound Effect Registration")
-    func testGlobalSoundEffectRegistration() {
-        var globalActionCalled = false
-        MumbleSpeaker.registerSoundEffect(named: "global_chime") {
-            globalActionCalled = true
+    @Test("Global Static Effect Registration")
+    func testGlobalEffectRegistration() {
+        let box = ActionBox()
+        MumbleSpeaker.registerEffect(named: "global_chime") {
+            box.called = true
         }
 
-        // NPC instance should inherit the globally registered sound effect
-        let guardSpeaker = MumbleSpeaker(profile: .guardProfile)
-        MumbleSpeechEngine.shared.playSoundEffect(named: "global_chime")
-        #expect(globalActionCalled)
+        // NPC instance should inherit the globally registered effect
+        _ = MumbleSpeaker(profile: .guardProfile)
+        MumbleSpeechEngine.shared.triggerEffect(named: "global_chime")
+        #expect(box.called)
     }
 
-    @Test("Instance-Specific Sound Effect Override")
-    func testInstanceSoundEffectOverride() {
-        var instanceActionCalled = false
+    @Test("Instance-Specific Effect Override")
+    func testInstanceEffectOverride() {
+        let box = ActionBox()
         let pirateSpeaker = MumbleSpeaker(
             profile: .pirate,
-            soundEffects: [
+            effects: [
                 "aye": .action {
-                    instanceActionCalled = true
+                    box.called = true
                 }
             ]
         )

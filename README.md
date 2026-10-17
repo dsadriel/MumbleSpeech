@@ -98,6 +98,55 @@ let customVoice = VoiceProfile(
 
 ---
 
+---
+
+## Effects & Tags (`{tag}`)
+
+You can embed inline cue tags directly in your dialogue strings, such as `"{camera_shake}"`, `"{coin}"`, or `"{purr}"`.
+
+Effects can be registered **statically (globally)** for all speakers across your game, or **per-instance** for specific NPCs.
+
+### 1. Global Static Configuration (Recommended)
+Register effects once at app/game startup. Any speaker or NPC will automatically inherit and trigger them:
+
+```swift
+// Register an audio file (.wav, .mp3, etc.)
+MumbleSpeaker.registerEffect(named: "chime", url: chimeURL)
+
+// Register custom game logic (camera shake, haptics, UI animations)
+MumbleSpeaker.registerEffect(named: "shake") {
+    CameraRig.current.shake(intensity: 0.8)
+}
+
+// Or configure default settings centrally
+MumbleSpeaker.configure(
+    profile: .youngWoman,
+    effects: [
+        "coin": .file(coinSoundURL),
+        "flash": .action { ScreenFlash.trigger() }
+    ]
+)
+```
+
+### 2. NPC-Specific Instances with Local Overrides
+You can create specific NPC speaker instances with their own voice profiles and custom effect overrides:
+
+```swift
+// NPC instance inherits all global effects, plus local overrides
+let pirate = MumbleSpeaker(
+    profile: .pirate,
+    effects: [
+        "aye": .action { playPirateLaugh() }
+    ]
+)
+
+// In dialogue, "{shake}" resolves to the global handler,
+// while "{aye}" triggers this pirate's specific action:
+Task {
+    await pirate.speak("Ahoy! {aye} The storm approaches! {shake}")
+}
+```
+
 ## Supported Platforms
 - macOS 13+
 - iOS 16+

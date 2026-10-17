@@ -4,8 +4,13 @@ import Foundation
 public enum DialogueStep: Equatable, Sendable {
     /// A single visible character with its punctuation-calculated delay before the next step.
     case character(Character, delay: TimeInterval, isVowelGroupStart: Bool, vowelCluster: String?)
-    /// An inline sound effect cue (e.g. "{purr}") that shouldn't appear in the visible dialogue.
-    case soundEffect(String)
+    /// An inline cue or effect (e.g. "{shake_screen}", "{purr}") that shouldn't appear in visible dialogue.
+    case effect(String)
+
+    /// Backwards-compatible constructor for soundEffect tags
+    public static func soundEffect(_ tag: String) -> DialogueStep {
+        return .effect(tag)
+    }
 }
 
 /// Computes the typewriter pacing and cadence based on punctuation rhythm.
@@ -43,12 +48,12 @@ public struct TextPacer: Sendable {
         while i < characters.count {
             let char = characters[i]
 
-            // Check for inline sound effect tag: e.g. "{purr}"
+            // Check for inline effect tag: e.g. "{purr}", "{camera_shake}"
             if char == "{" {
                 if let closeIndex = characters[i...].firstIndex(of: "}") {
                     let tagChars = characters[(i + 1)..<closeIndex]
                     let tag = String(tagChars).trimmingCharacters(in: .whitespaces)
-                    steps.append(.soundEffect(tag))
+                    steps.append(.effect(tag))
                     i = closeIndex + 1
                     continue
                 }
