@@ -15,15 +15,30 @@ Based on acoustic speech research and procedural formant synthesis:
 
 ## Installation (Swift Package Manager)
 
-Add `MumbleSpeech` to your `Package.swift`:
+### In `Package.swift`
+Add `MumbleSpeech` to your dependencies:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-username/MumbleSpeech.git", from: "1.0.0")
+    .package(url: "https://github.com/dsadriel/MumbleSpeech.git", from: "1.0.0")
+],
+targets: [
+    .target(
+        name: "YourTarget",
+        dependencies: [
+            .product(name: "MumbleSpeech", package: "MumbleSpeech")
+        ]
+    )
 ]
 ```
 
-Or in Xcode: **File** > **Add Package Dependencies...** and point to the `MumbleSpeech` package folder or Git repository.
+### In Xcode
+1. Go to **File** > **Add Package Dependencies...**
+2. Enter the repository URL:
+   ```text
+   https://github.com/dsadriel/MumbleSpeech.git
+   ```
+3. Set the Dependency Rule to **Up to Next Major Version** starting from `1.0.0`.
 
 ---
 
