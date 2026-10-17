@@ -148,6 +148,15 @@ let customVoice = VoiceProfile(
 
 ---
 
+---
+
+## Inspiration & Acknowledgements
+
+This project was inspired by the excellent video:
+- 📺 **[How Procedural Mumble Speech Works in Games (Mythfall Devlog)](https://www.youtube.com/watch?v=NaW0d7Tghw0)**
+
+Special thanks to the video for demonstrating the practical implementation of formant synthesis, vocal tract resonance scaling, vowel clustering, and prosody declination in games.
+
 ## Supported Platforms
 - macOS 13+
 - iOS 16+
