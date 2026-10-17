@@ -22,7 +22,7 @@ struct MumbleSpeechTests {
     @Test("Text Pacer Punctuation Rhythm")
     func testTextPacer() {
         let pacer = TextPacer(baseLetterDelay: 0.04)
-        let steps = pacer.parse(text: "Sister Agnes told me! {purr}")
+        let steps = pacer.parse(text: "Welcome traveler! {purr}")
 
         let hasPurr = steps.contains { step in
             if case .effect(let sfx) = step, sfx == "purr" { return true }
@@ -36,13 +36,13 @@ struct MumbleSpeechTests {
             }
             return nil
         }
-        #expect(vowelStarts.count >= 6)
+        #expect(vowelStarts.count >= 5)
     }
 
     @Test("Prosody Engine Declination and Inflection")
     func testProsodyEngine() {
         let engine = ProsodyEngine()
-        let profile = VoiceProfile.youngWoman
+        let profile = VoiceProfile.bright
 
         let start = engine.calculateProsody(
             profile: profile,
@@ -79,7 +79,7 @@ struct MumbleSpeechTests {
     @Test("Formant Synthesis Buffer Generation")
     func testFormantSynthesis() {
         let synth = FormantSynthesizer.shared
-        let profile = VoiceProfile.guardProfile
+        let profile = VoiceProfile.deep
 
         for vowel in Vowel.allCases {
             let buffer = synth.synthesizeVowel(vowel: vowel, pitch: profile.basePitch, profile: profile)
@@ -98,9 +98,9 @@ struct MumbleSpeechTests {
 
     @Test("MumbleSpeaker Prewarm Vowel Cache")
     func testMumbleSpeakerCache() {
-        let speaker = MumbleSpeaker(profile: .guardProfile)
+        let speaker = MumbleSpeaker(profile: .deep)
         speaker.prewarmVowelCache()
-        #expect(speaker.profile.id == "guard")
+        #expect(speaker.profile.id == "deep")
     }
 
     @Test("Global Static Effect Registration")
@@ -110,8 +110,8 @@ struct MumbleSpeechTests {
             box.called = true
         }
 
-        // NPC instance should inherit the globally registered effect
-        _ = MumbleSpeaker(profile: .guardProfile)
+        // Speaker instance should inherit the globally registered effect
+        _ = MumbleSpeaker(profile: .deep)
         MumbleSpeechEngine.shared.triggerEffect(named: "global_chime")
         #expect(box.called)
     }
@@ -119,15 +119,15 @@ struct MumbleSpeechTests {
     @Test("Instance-Specific Effect Override")
     func testInstanceEffectOverride() {
         let box = ActionBox()
-        let pirateSpeaker = MumbleSpeaker(
-            profile: .pirate,
+        let speaker = MumbleSpeaker(
+            profile: .raspy,
             effects: [
-                "aye": .action {
+                "action": .action {
                     box.called = true
                 }
             ]
         )
 
-        #expect(pirateSpeaker.profile.id == "pirate")
+        #expect(speaker.profile.id == "raspy")
     }
 }

@@ -27,7 +27,7 @@ public struct VoiceProfile: Identifiable, Hashable, Sendable {
     /// Micro-pitch pulse-to-pulse jitter (imperfection to prevent robotic tone, ~0.005 to 0.02).
     public var jitter: Float
 
-    /// Vowel burst sound duration in seconds (typically ~0.12s to 0.18s).
+    /// Vowel burst sound duration in seconds (typically ~0.07s to 0.12s).
     public var vowelDuration: Float
 
     public init(
@@ -57,14 +57,14 @@ public struct VoiceProfile: Identifiable, Hashable, Sendable {
     }
 }
 
-// MARK: - Character Presets
+// MARK: - Generic Acoustic Voice Presets
 public extension VoiceProfile {
-    /// Deep, authoritative town guard with a long vocal tract and steady pitch.
-    static let guardProfile = VoiceProfile(
-        id: "guard",
-        name: "Captain Thorne",
-        roleDescription: "Castle Guard",
-        icon: "shield.fill",
+    /// Low, authoritative voice with a long vocal tract and steady pitch.
+    static let deep = VoiceProfile(
+        id: "deep",
+        name: "Deep",
+        roleDescription: "Authoritative low tone with extended vocal tract",
+        icon: "waveform.badge.minus",
         basePitch: 92.0,
         tractLengthScale: 0.88,
         breathiness: 0.06,
@@ -74,12 +74,12 @@ public extension VoiceProfile {
         vowelDuration: 0.105
     )
 
-    /// Young woman (Sister Agnes archetype) with higher pitch and shorter vocal tract.
-    static let youngWoman = VoiceProfile(
-        id: "sister_agnes",
-        name: "Sister Agnes",
-        roleDescription: "Temple Priestess",
-        icon: "sparkles",
+    /// Higher pitch, clear and lively resonant tone with shorter vocal tract.
+    static let bright = VoiceProfile(
+        id: "bright",
+        name: "Bright",
+        roleDescription: "High, clear resonant tone",
+        icon: "waveform.badge.plus",
         basePitch: 225.0,
         tractLengthScale: 1.25,
         breathiness: 0.10,
@@ -89,11 +89,11 @@ public extension VoiceProfile {
         vowelDuration: 0.085
     )
 
-    /// Energetic child with very high pitch and an extra-short vocal tract.
-    static let child = VoiceProfile(
-        id: "child",
-        name: "Pip",
-        roleDescription: "Village Orphan",
+    /// Energetic high-pitched voice with an extra-short vocal tract.
+    static let youth = VoiceProfile(
+        id: "youth",
+        name: "Youth",
+        roleDescription: "Very high, energetic pitch with compact vocal tract",
         icon: "figure.walk",
         basePitch: 320.0,
         tractLengthScale: 1.48,
@@ -104,27 +104,27 @@ public extension VoiceProfile {
         vowelDuration: 0.075
     )
 
-    /// Village elder with unsteady, slow vibrato (~2 Hz) and mid-low fundamental pitch.
-    static let elder = VoiceProfile(
-        id: "elder",
-        name: "Elder Raymond",
-        roleDescription: "Ancient Scholar",
-        icon: "book.fill",
+    /// Unsteady, slow pitch modulation (~2 Hz) with gentle vibrato tremor.
+    static let tremor = VoiceProfile(
+        id: "tremor",
+        name: "Tremor",
+        roleDescription: "Aged voice with slow ~2 Hz tremor vibrato",
+        icon: "waveform.path",
         basePitch: 125.0,
         tractLengthScale: 1.02,
         breathiness: 0.14,
-        vibratoDepth: 0.055, // Slow steady wobble as highlighted in devlog
-        vibratoRate: 2.0,   // ~2 Hz wobble
+        vibratoDepth: 0.055,
+        vibratoRate: 2.0,
         jitter: 0.020,
         vowelDuration: 0.110
     )
 
-    /// Pirate who mutters with mouth almost closed, raspy voice.
-    static let pirate = VoiceProfile(
-        id: "pirate",
-        name: "Barnaby",
-        roleDescription: "Scurvy Pirate",
-        icon: "anchor.fill",
+    /// Husky, breathy lower tone with narrow mouth cavity.
+    static let raspy = VoiceProfile(
+        id: "raspy",
+        name: "Raspy",
+        roleDescription: "Breathy, husky lower tone",
+        icon: "wind",
         basePitch: 110.0,
         tractLengthScale: 0.94,
         breathiness: 0.18,
@@ -134,11 +134,11 @@ public extension VoiceProfile {
         vowelDuration: 0.095
     )
 
-/// Cackling witch with high raspy pitch, fast vibrato, and shorter vocal tract.
-    static let witch = VoiceProfile(
-        id: "witch",
-        name: "Morgana",
-        roleDescription: "Forest Witch",
+    /// High raspy pitch with fast 3.5 Hz vibrato.
+    static let sharp = VoiceProfile(
+        id: "sharp",
+        name: "Sharp",
+        roleDescription: "High raspy tone with fast vibrato",
         icon: "flame.fill",
         basePitch: 260.0,
         tractLengthScale: 1.15,
@@ -149,13 +149,21 @@ public extension VoiceProfile {
         vowelDuration: 0.090
     )
 
-    /// Default collection of all built-in characters.
+    /// Default collection of all built-in acoustic presets.
     static let allPresets: [VoiceProfile] = [
-        .guardProfile,
-        .youngWoman,
-        .child,
-        .elder,
-        .pirate,
-        .witch
+        .deep,
+        .bright,
+        .youth,
+        .tremor,
+        .raspy,
+        .sharp
     ]
+
+    // MARK: - Backwards-Compatible Aliases
+    static var guardProfile: VoiceProfile { deep }
+    static var youngWoman: VoiceProfile { bright }
+    static var child: VoiceProfile { youth }
+    static var elder: VoiceProfile { tremor }
+    static var pirate: VoiceProfile { raspy }
+    static var witch: VoiceProfile { sharp }
 }

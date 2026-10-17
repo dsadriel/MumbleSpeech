@@ -51,7 +51,7 @@ MumbleSpeaker.registerEffect(named: "shake") {
 
 // C. Or configure default voice and effects together centrally:
 MumbleSpeaker.configure(
-    profile: .youngWoman,
+    profile: .bright,
     typingSpeedMultiplier: 1.0,
     effects: [
         "chime": .file(chimeURL),
@@ -120,15 +120,17 @@ witch.skip()
 
 ---
 
-## Character Voice Presets
+## Voice Presets
 
-`VoiceProfile` provides ready-to-use character archetypes:
-- `VoiceProfile.youngWoman`: High, bright pitch (225 Hz), shorter tract ($1.25\times$).
-- `VoiceProfile.guardProfile`: Deep, authoritative pitch (92 Hz), long vocal tract ($0.88\times$).
-- `VoiceProfile.child`: Energetic pitch (320 Hz), extra-short vocal tract ($1.48\times$).
-- `VoiceProfile.elder`: Ancient voice with a slow 2 Hz unsteady tremor/vibrato.
-- `VoiceProfile.pirate`: Raspy breath, narrow mouth tract, low-mid pitch.
-- `VoiceProfile.witch`: Cackling, high raspy pitch (260 Hz), fast 3.5 Hz vibrato.
+`VoiceProfile` provides ready-to-use acoustic voice presets:
+- `VoiceProfile.bright`: High, clear resonant tone (225 Hz, vocal tract scale 1.25).
+- `VoiceProfile.deep`: Low, authoritative tone (92 Hz, extended vocal tract scale 0.88).
+- `VoiceProfile.youth`: Energetic high-pitched voice (320 Hz, compact tract scale 1.48).
+- `VoiceProfile.tremor`: Unsteady voice with gentle ~2 Hz tremor vibrato (125 Hz).
+- `VoiceProfile.raspy`: Husky, breathy lower tone with narrow cavity (110 Hz).
+- `VoiceProfile.sharp`: Sharp tone with fast 3.5 Hz vibrato (260 Hz).
+
+*(Convenience aliases like `.guardProfile`, `.youngWoman`, `.child`, `.elder`, `.pirate`, and `.witch` are also preserved for drop-in compatibility).*
 
 ### Custom Voice Creation (1 Line)
 

@@ -46,7 +46,7 @@ public final class MumbleSpeaker: @unchecked Sendable {
 
     /// Creates a MumbleSpeaker with optional voice profile, speed, and effect dictionary.
     public init(
-        profile: VoiceProfile = .youngWoman,
+        profile: VoiceProfile = .bright,
         typingSpeedMultiplier: Double = 1.0,
         effects: [String: Effect] = [:]
     ) {
@@ -58,7 +58,7 @@ public final class MumbleSpeaker: @unchecked Sendable {
 
     /// Backwards-compatible convenience initializer using `soundEffects`.
     public convenience init(
-        profile: VoiceProfile = .youngWoman,
+        profile: VoiceProfile = .bright,
         typingSpeedMultiplier: Double = 1.0,
         soundEffects: [String: Effect]
     ) {
