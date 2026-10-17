@@ -98,4 +98,16 @@ struct MumbleSpeechTests {
         speaker.prewarmVowelCache()
         #expect(speaker.profile.id == "guard")
     }
+
+    @Test("Sound Effect Registration")
+    func testSoundEffectRegistration() {
+        let speaker = MumbleSpeaker(profile: .youngWoman)
+        var actionExecuted = false
+        speaker.registerSoundEffect(named: "chime") {
+            actionExecuted = true
+        }
+
+        MumbleSpeechEngine.shared.playSoundEffect(named: "chime")
+        #expect(actionExecuted)
+    }
 }

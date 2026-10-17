@@ -53,6 +53,23 @@ public final class MumbleSpeaker: @unchecked Sendable {
         }
     }
 
+    // MARK: - Sound Effect Registration
+
+    /// Registers a custom in-memory PCM buffer for inline dialogue tags like "{snort}".
+    public func registerSoundEffect(named name: String, buffer: AVAudioPCMBuffer) {
+        MumbleSpeechEngine.shared.registerSoundEffect(named: name, buffer: buffer)
+    }
+
+    /// Registers an audio file URL (.wav, .mp3, etc.) for inline dialogue tags like "{chime}".
+    public func registerSoundEffect(named name: String, url: URL) {
+        MumbleSpeechEngine.shared.registerSoundEffect(named: name, url: url)
+    }
+
+    /// Registers a custom callback closure for inline tags like "{shake_screen}" or custom game audio.
+    public func registerSoundEffect(named name: String, action: @Sendable @escaping () -> Void) {
+        MumbleSpeechEngine.shared.registerSoundEffect(named: name, action: action)
+    }
+
     /// Speaks dialogue asynchronously, emitting viseme and character events as text types out.
     ///
     /// - Parameter text: The dialogue text, which may include inline tags like `{purr}` or `{shake}`.

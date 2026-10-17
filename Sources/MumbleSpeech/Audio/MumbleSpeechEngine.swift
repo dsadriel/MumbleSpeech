@@ -5,6 +5,12 @@ import AVFoundation
 public final class MumbleSpeechEngine: @unchecked Sendable {
     public static let shared = MumbleSpeechEngine()
 
+    public enum SoundEffectSource: @unchecked Sendable {
+        case buffer(AVAudioPCMBuffer)
+        case file(URL)
+        case custom(@Sendable () -> Void)
+    }
+
     private let audioEngine = AVAudioEngine()
     private let mixerNode = AVAudioMixerNode()
 
@@ -12,6 +18,8 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
     private let poolSize = 6
     private var playerNodes: [AVAudioPlayerNode] = []
     private var nextPlayerIndex = 0
+
+    private var soundEffects: [String: SoundEffectSource] = [:]
 
     private let lock = NSRecursiveLock()
     private var isEngineRunning = false
@@ -54,6 +62,27 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
         }
     }
 
+    /// Registers a sound effect using an in-memory PCM buffer.
+    public func registerSoundEffect(named name: String, buffer: AVAudioPCMBuffer) {
+        lock.lock()
+        defer { lock.unlock() }
+        soundEffects[name.lowercased()] = .buffer(buffer)
+    }
+
+    /// Registers a sound effect from an audio file URL (.wav, .mp3, .caf, .aif).
+    public func registerSoundEffect(named name: String, url: URL) {
+        lock.lock()
+        defer { lock.unlock() }
+        soundEffects[name.lowercased()] = .file(url)
+    }
+
+    /// Registers a custom closure or playback callback for a sound effect tag.
+    public func registerSoundEffect(named name: String, action: @Sendable @escaping () -> Void) {
+        lock.lock()
+        defer { lock.unlock() }
+        soundEffects[name.lowercased()] = .custom(action)
+    }
+
     /// Plays a synthesized vowel sound buffer with smooth overlap.
     public func playVowel(buffer: AVAudioPCMBuffer, volume: Float = 1.0) {
         lock.lock()
@@ -73,11 +102,45 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
         }
     }
 
-    /// Plays an inline sound effect such as a cat purr or notification chime.
+    /// Plays a registered sound effect or built-in procedural fallback.
     public func playSoundEffect(named sfx: String) {
-        // Procedurally synthesize a subtle cat purr / low vibration or chirp
-        if sfx.lowercased() == "purr" {
+        lock.lock()
+        let effect = soundEffects[sfx.lowercased()]
+        lock.unlock()
+
+        if let effect = effect {
+            switch effect {
+            case .buffer(let buffer):
+                playVowel(buffer: buffer)
+            case .file(let url):
+                playAudioFile(url: url)
+            case .custom(let action):
+                action()
+            }
+        } else if sfx.lowercased() == "purr" {
+            // Built-in procedural cat purr fallback
             synthesizeAndPlayPurr()
+        }
+    }
+
+    private func playAudioFile(url: URL) {
+        do {
+            let audioFile = try AVAudioFile(forReading: url)
+            lock.lock()
+            defer { lock.unlock() }
+
+            startEngineIfNeeded()
+            guard !playerNodes.isEmpty else { return }
+
+            let player = playerNodes[nextPlayerIndex]
+            nextPlayerIndex = (nextPlayerIndex + 1) % playerNodes.count
+
+            player.scheduleFile(audioFile, at: nil, completionHandler: nil)
+            if !player.isPlaying {
+                player.play()
+            }
+        } catch {
+            print("Failed to load sound effect at \(url): \(error)")
         }
     }
 
@@ -103,14 +166,14 @@ public final class MumbleSpeechEngine: @unchecked Sendable {
         playVowel(buffer: buffer, volume: 0.9)
     }
 
-    /// Immediately stops all currently playing and queued vowel audio.
+    /// Immediately stops all currently playing and queued audio.
     public func stopAll() {
         lock.lock()
         defer { lock.unlock() }
 
         for player in playerNodes {
             player.stop()
-            player.play() // Re-arm ready for immediate next schedule
+            player.play()
         }
     }
 }
